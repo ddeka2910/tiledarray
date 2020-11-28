@@ -1,0 +1,36 @@
+stages:
+  - build
+
+default:
+  tags: [ docker ]
+
+build:ubuntu:18.04:gcc-8:
+  stage: build
+  image: valeevgroup/ubuntu:18.04
+  variables:
+    CXX: /usr/bin/g++-8
+  before_script:
+    #- apt-get install libeigen3-dev
+    - add-apt-repository ppa:mhier/libboost-latest
+    - apt-get update
+    - apt-get remove -yq libboost1.65-dev
+    - apt-get install -yq libboost1.70-dev
+  script:
+    - mkdir build
+    - cd build
+    - cmake -DCMAKE_BUILD_TYPE=Release -DTA_BUILD_UNITTEST=ON -DBLA_STATIC=OFF ..
+    - make -j8 tiledarray examples
+
+build:ubuntu:20.04:clang-9:
+  stage: build
+  image: valeevgroup/ubuntu:20.04
+  variables:
+    CXX: /usr/bin/clang++-9
+  # before_script:
+  #   - apt-get install libeigen3-dev
+  script:
+    - mkdir build
+    - cd build
+    - cmake -DCMAKE_BUILD_TYPE=Release -DTA_BUILD_UNITTEST=ON -DBLA_STATIC=OFF ..
+    - make -j8
+      
