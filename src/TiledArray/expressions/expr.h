@@ -26,9 +26,6 @@
 #ifndef TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED
 
-#include "TiledArray/config.h"
-#include "TiledArray/tile_interface/trace.h"
-#include "TiledArray/tile.h"
 #include "../reduce_task.h"
 #include "../tile_interface/cast.h"
 #include "../tile_interface/scale.h"
@@ -37,6 +34,9 @@
 #include "../tile_op/shift.h"
 #include "../tile_op/unary_reduction.h"
 #include "../tile_op/unary_wrapper.h"
+#include "TiledArray/config.h"
+#include "TiledArray/tile.h"
+#include "TiledArray/tile_interface/trace.h"
 #include "expr_engine.h"
 #ifdef TILEDARRAY_HAS_CUDA
 #include <TiledArray/cuda/cuda_task_fn.h>
@@ -397,12 +397,12 @@ class Expr {
         pmap;
     if (tsr.array().is_initialized()) pmap = tsr.array().pmap();
 
-    // Get result variable list.
-    VariableList target_vars(tsr.vars());
+    // Get result index list.
+    BipartiteIndexList target_indices(tsr.annotation());
 
     // Construct the expression engine
     engine_type engine(derived());
-    engine.init(world, pmap, target_vars);
+    engine.init(world, pmap, target_indices);
 
     // Create the distributed evaluator from this expression
     typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
@@ -468,12 +468,12 @@ class Expr {
     std::shared_ptr<typename BlkTsrExpr<A, Alias>::array_type::pmap_interface>
         pmap;
 
-    // Get result variable list.
-    VariableList target_vars(tsr.vars());
+    // Get result index list.
+    BipartiteIndexList target_indices(tsr.annotation());
 
     // Construct the expression engine
     engine_type engine(derived());
-    engine.init(world, pmap, target_vars);
+    engine.init(world, pmap, target_indices);
 
     // Create the distributed evaluator from this expression
     typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
@@ -527,13 +527,13 @@ class Expr {
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target variable list for this expression
-  void print(ExprOStream& os, const VariableList& target_vars) const {
+  /// \param target_indices The target index list for this expression
+  void print(ExprOStream& os, const BipartiteIndexList& target_indices) const {
     // Construct the expression engine
     engine_type engine(derived());
-    engine.init_vars(target_vars);
-    engine.init_struct(target_vars);
-    engine.print(os, target_vars);
+    engine.init_indices(target_indices);
+    engine.init_struct(target_indices);
+    engine.print(os, target_indices);
   }
 
  private:
@@ -568,7 +568,7 @@ class Expr {
     // Construct the expression engine
     engine_type engine(derived());
     engine.init(world, std::shared_ptr<typename engine_type::pmap_interface>(),
-                VariableList());
+                BipartiteIndexList());
 
     // Create the distributed evaluator from this expression
     typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
@@ -619,7 +619,7 @@ class Expr {
     engine_type left_engine(derived());
     left_engine.init(world,
                      std::shared_ptr<typename engine_type::pmap_interface>(),
-                     VariableList());
+                     BipartiteIndexList());
 
     // Create the distributed evaluator for this expression
     typename engine_type::dist_eval_type left_dist_eval =
@@ -628,7 +628,7 @@ class Expr {
 
     // Evaluate the right-hand expression
     typename D::engine_type right_engine(right_expr.derived());
-    right_engine.init(world, left_engine.pmap(), left_engine.vars());
+    right_engine.init(world, left_engine.pmap(), left_engine.indices());
 
     // Create the distributed evaluator for the right-hand expression
     typename D::engine_type::dist_eval_type right_dist_eval =
@@ -687,18 +687,18 @@ class Expr {
     return reduce(right_expr, op, default_world());
   }
 
-  template<typename TileType = typename EngineTrait<engine_type>::eval_type,
-           typename = TiledArray::detail::enable_if_trace_is_defined_t<TileType>>
-  Future<result_of_trace_t<TileType>>
-  trace(World& world) const {
+  template <
+      typename TileType = typename EngineTrait<engine_type>::eval_type,
+      typename = TiledArray::detail::enable_if_trace_is_defined_t<TileType>>
+  Future<result_of_trace_t<TileType>> trace(World& world) const {
     typedef typename EngineTrait<engine_type>::eval_type value_type;
     return reduce(TiledArray::TraceReduction<value_type>(), world);
   }
 
-  template<typename TileType = typename EngineTrait<engine_type>::eval_type,
-           typename = TiledArray::detail::enable_if_trace_is_defined_t<TileType>>
-  Future<result_of_trace_t<TileType>>
-  trace() const {
+  template <
+      typename TileType = typename EngineTrait<engine_type>::eval_type,
+      typename = TiledArray::detail::enable_if_trace_is_defined_t<TileType>>
+  Future<result_of_trace_t<TileType>> trace() const {
     return trace(default_world());
   }
 
