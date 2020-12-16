@@ -8,9 +8,6 @@ cache:
   directories:
   - /home/travis/_install
 os: linux
-arch:
- - amd64
- - ppc64le
 
 addons:
   apt:
